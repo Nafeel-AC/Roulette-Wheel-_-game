@@ -39,6 +39,9 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
   const itemsRef = useRef(null);
   const centerDetectionInterval = useRef(null);
   const itemWidth = 140; // Width of each item + margin
+  const [selectorPosition, setSelectorPosition] = useState(0);
+  const itemPadding = 10; // Padding between items
+  const itemMargin = 10; // Margin between items
 
   // Map items to include images and special status
   const rouletteItems = items.map((item) => ({
@@ -102,10 +105,14 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
           // Check if item is close to the center
           if (Math.abs(itemCenterX - centerX) < 30) {
             foundItemInCenter = true;
+            setSelectorPosition(itemCenterX - containerRect.left);
+            setSelectorVisible(true);
           }
         });
         
-        setItemPassingCenter(foundItemInCenter);
+        if (!foundItemInCenter) {
+          setSelectorVisible(false);
+        }
       };
       
       // Run the check frequently during spinning
@@ -113,6 +120,7 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
       return () => clearInterval(centerDetectionInterval.current);
     } else {
       setItemPassingCenter(false);
+      setSelectorVisible(false);
     }
   }, [spinning]);
 
@@ -166,7 +174,8 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
         
           setWinner((actualIndex + rouletteItems.length) % rouletteItems.length);
           setSpinning(false);
-          setSelectorVisible(false);
+          // Keep the selector visible for a moment to highlight the winning item
+          setTimeout(() => setSelectorVisible(false), 1000);
         }, 100);
       }
     };
@@ -177,8 +186,8 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
   return (
     <div className="roulette-container">
       <div className="position-relative mb-4" style={{ width: "100%" }}>
-        {/* Card selector in the center - only visible during spinning when items pass through */}
-        <div className={`card-selector ${selectorVisible ? 'visible' : 'hidden'}`}></div>
+        {/* Card selector dynamically follows items with smooth transition */}
+        <div className={`card-selector ${selectorVisible ? 'visible' : 'hidden'}`} style={{ left: `${selectorPosition}px`, transition: 'left 0.2s ease' }}></div>
 
         {/* Roulette container */}
         <div ref={containerRef} className="roulette-viewport">
@@ -193,11 +202,12 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
                 className={`roulette-item ${
                   winner !== null && index % rouletteItems.length === winner ? 'winner' : ''
                 } ${item.special ? 'special' : ''}`}
+                style={{ margin: `0 ${itemMargin}px` }}
               >
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="item-image"
+                  className="item-image m-3"
                   crossOrigin="anonymous"
                 />
               </div>
