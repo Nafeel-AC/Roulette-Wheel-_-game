@@ -132,7 +132,7 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
     const centerPosition = containerWidth / 2;
     
     // Store the current position before spinning
-    const startingPosition = position;
+    const startingPosition = position % (rouletteItems.length * itemWidth);
     
     // Random spin duration between 3 and 6 seconds
     const duration = Math.floor(Math.random() * 3000) + 3000;
@@ -147,8 +147,9 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
       const elapsed = timestamp - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
-      const easeOut = (t) => 1 - Math.pow(1 - t, 3); // Smoother ease-out
-      const currentDistance = easeOut(progress) * totalDistance;
+      // Use a cubic easing function for smooth deceleration
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+      const currentDistance = easeOutCubic(progress) * totalDistance;
       
       // Always add to the starting position to ensure forward movement
       setPosition(startingPosition + currentDistance);
