@@ -12,7 +12,7 @@ const prizeImages = {
   gift: 'https://img.icons8.com/color/96/000000/gift.png',
   coin: 'https://img.icons8.com/color/96/000000/gold-bars.png',
   jersey: 'https://img.icons8.com/color/96/000000/t-shirt.png',
-  shoes: 'https://img.icons8.com/color/96/000000/baseball-cap.png'
+  shoes: 'https://img.icons8.com/color/96/000000/ticket.png'
 };
 
 const defaultPrizes = [
@@ -34,9 +34,11 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
   const [position, setPosition] = useState(0);
   const [selectorVisible, setSelectorVisible] = useState(false);
   const [itemPassingCenter, setItemPassingCenter] = useState(false);
+  const [remainingItems, setRemainingItems] = useState(null);
   const containerRef = useRef(null);
   const itemsRef = useRef(null);
   const centerDetectionInterval = useRef(null);
+  const itemWidth = 140; // Width of each item + margin
 
   // Map items to include images and special status
   const rouletteItems = items.map((item) => ({
@@ -47,13 +49,15 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
   }));
 
   // Create a continuous loop of items
+  // Repeat items enough times to allow long forward scrolling
   const createContinuousItems = () => {
-    return [...rouletteItems, ...rouletteItems, ...rouletteItems];
+    // Create 10 sets of items for a very long list
+    return Array(10).fill(rouletteItems).flat();
   };
 
-  const continuousItems = createContinuousItems();
+  const continuousItems = remainingItems || createContinuousItems();
 
-  // Center the first item on mount
+  // Center the first item on mount and maintain continuous scrolling
   useEffect(() => {
     const itemWidth = 140; // Width of each item + margin
     const containerWidth = containerRef.current?.clientWidth || 800;
@@ -64,6 +68,20 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
     setPosition(initialPosition);
   }, [rouletteItems.length]);
 
+  // Reset position if we've spun too far
+  useEffect(() => {
+    if (!spinning && position > rouletteItems.length * itemWidth * 7) {
+      // If we've scrolled too far, reset position while keeping visual alignment
+      const fullRotation = rouletteItems.length * itemWidth;
+      const newBasePosition = position % fullRotation;
+      const adjustedPosition = newBasePosition + fullRotation;
+      
+      // Create new set of items
+      setRemainingItems(createContinuousItems());
+      setPosition(adjustedPosition);
+    }
+  }, [spinning, position, rouletteItems.length]);
+
   // Check if an item is passing through the center
   useEffect(() => {
     if (spinning) {
@@ -72,7 +90,6 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
         
         const containerRect = containerRef.current.getBoundingClientRect();
         const centerX = containerRect.left + containerRect.width / 2;
-        const centerY = containerRect.top + containerRect.height / 2;
         
         // Get all item elements
         const itemElements = document.querySelectorAll('.roulette-item');
@@ -109,44 +126,47 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
 
     setSpinning(true);
     setWinner(null);
-
-    // Calculate a random winner from the original items
-    const randomIndex = Math.floor(Math.random() * rouletteItems.length);
-
-    // Calculate number of full rotations plus the position to the winning item
-    const itemWidth = 140; // Width of each item + margin
+    
+    const itemWidth = 140;
     const containerWidth = containerRef.current?.clientWidth || 800;
     const centerPosition = containerWidth / 2;
-
-    // We want to do at least 2 full rotations plus the position to the winning item
-    const fullRotation = rouletteItems.length * itemWidth;
-    const targetPosition = fullRotation * 2 + (randomIndex + rouletteItems.length) * itemWidth - centerPosition + itemWidth / 2;
-
-    // Animation variables
+    
+    // Store the current position before spinning
+    const startingPosition = position;
+    
+    // Random spin duration between 3 and 6 seconds
+    const duration = Math.floor(Math.random() * 3000) + 3000;
+  
+    // Distance to scroll (simulate multiple full passes)
+    const totalDistance = rouletteItems.length * itemWidth * (2 + Math.random() * 2);
+  
     let startTime = null;
-    const duration = 5000; // 5 seconds
-
+    
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
-      // Easing function for more realistic spinning
-      const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
-      const currentPosition = easeOutQuint(progress) * targetPosition;
-
-      // Apply modulo to ensure the position loops back around
-      setPosition(currentPosition % (rouletteItems.length * itemWidth * 2));
+      const easeOut = (t) => 1 - Math.pow(1 - t, 3); // Smoother ease-out
+      const currentDistance = easeOut(progress) * totalDistance;
+      
+      // Always add to the starting position to ensure forward movement
+      setPosition(startingPosition + currentDistance);
 
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
-        // Spinning complete
-        setWinner(randomIndex);
+        // Animation ended — determine nearest item to center
         setTimeout(() => {
+          const finalPosition = startingPosition + totalDistance;
+          const offset = finalPosition + centerPosition - itemWidth / 2;
+          const centeredIndex = Math.round(offset / itemWidth);
+          const actualIndex = centeredIndex % rouletteItems.length;
+        
+          setWinner((actualIndex + rouletteItems.length) % rouletteItems.length);
           setSpinning(false);
           setSelectorVisible(false);
-        }, 500);
+        }, 100);
       }
     };
 
@@ -197,6 +217,7 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
         {winner !== null && (
           <div className="winner-display mt-3">
             <h3>You won: {rouletteItems[winner].name}!</h3>
+            <p className="text-muted">Item #{winner + 1}</p>
           </div>
         )}
       </div>
