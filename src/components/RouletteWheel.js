@@ -11,8 +11,8 @@ const prizeImages = {
   ticket: 'https://img.icons8.com/color/96/000000/ticket.png',
   gift: 'https://img.icons8.com/color/96/000000/gift.png',
   coin: 'https://img.icons8.com/color/96/000000/gold-bars.png',
-  jersey: 'https://img.icons8.com/color/96/000000/gold-bars.png',
-  shoes: 'https://img.icons8.com/color/96/000000/gold-bars.png'
+  jersey: 'https://img.icons8.com/fluency/96/jersey.png',
+  shoes: 'https://img.icons8.com/fluency/96/sneakers.png'
 };
 
 const defaultPrizes = [
@@ -33,10 +33,10 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
   const [winner, setWinner] = useState(null);
   const [position, setPosition] = useState(0);
   const [selectorVisible, setSelectorVisible] = useState(false);
+  const [itemPassingCenter, setItemPassingCenter] = useState(false);
   const containerRef = useRef(null);
   const itemsRef = useRef(null);
-  const animationFrameRef = useRef(null);
-  const lastPositionRef = useRef(0);
+  const centerDetectionInterval = useRef(null);
 
   // Map items to include images and special status
   const rouletteItems = items.map((item) => ({
@@ -62,78 +62,102 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
     // Position to center the first item (using the middle set of items)
     const initialPosition = (rouletteItems.length * itemWidth) + (centerPosition - itemWidth / 2);
     setPosition(initialPosition);
-    lastPositionRef.current = initialPosition;
   }, [rouletteItems.length]);
 
-  // Check if an item is in the center
-  const checkItemInCenter = (currentPosition) => {
-    const itemWidth = 140;
-    const remainder = currentPosition % itemWidth;
-    // Show selector when item is approaching center (within 20px of center)
-    setSelectorVisible(remainder < 20 || remainder > itemWidth - 20);
-  };
+  // Check if an item is passing through the center
+  useEffect(() => {
+    if (spinning) {
+      const checkItemInCenter = () => {
+        if (!containerRef.current) return;
+        
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const centerX = containerRect.left + containerRect.width / 2;
+        const centerY = containerRect.top + containerRect.height / 2;
+        
+        // Get all item elements
+        const itemElements = document.querySelectorAll('.roulette-item');
+        let foundItemInCenter = false;
+        
+        itemElements.forEach(item => {
+          const itemRect = item.getBoundingClientRect();
+          const itemCenterX = itemRect.left + itemRect.width / 2;
+          
+          // Check if item is close to the center
+          if (Math.abs(itemCenterX - centerX) < 30) {
+            foundItemInCenter = true;
+          }
+        });
+        
+        setItemPassingCenter(foundItemInCenter);
+      };
+      
+      // Run the check frequently during spinning
+      centerDetectionInterval.current = setInterval(checkItemInCenter, 50);
+      return () => clearInterval(centerDetectionInterval.current);
+    } else {
+      setItemPassingCenter(false);
+    }
+  }, [spinning]);
+
+  // Update the selector visibility based on spinning and item position
+  useEffect(() => {
+    setSelectorVisible(spinning && itemPassingCenter);
+  }, [spinning, itemPassingCenter]);
 
   const spinWheel = () => {
     if (spinning) return;
 
     setSpinning(true);
     setWinner(null);
-    setSelectorVisible(true);
 
+    // Calculate a random winner from the original items
     const randomIndex = Math.floor(Math.random() * rouletteItems.length);
-    const itemWidth = 140;
+
+    // Calculate number of full rotations plus the position to the winning item
+    const itemWidth = 140; // Width of each item + margin
     const containerWidth = containerRef.current?.clientWidth || 800;
     const centerPosition = containerWidth / 2;
+
+    // We want to do at least 2 full rotations plus the position to the winning item
     const fullRotation = rouletteItems.length * itemWidth;
     const targetPosition = fullRotation * 2 + (randomIndex + rouletteItems.length) * itemWidth - centerPosition + itemWidth / 2;
 
+    // Animation variables
     let startTime = null;
-    const duration = 5000;
+    const duration = 5000; // 5 seconds
 
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
+      // Easing function for more realistic spinning
       const easeOutQuint = (t) => 1 - Math.pow(1 - t, 5);
       const currentPosition = easeOutQuint(progress) * targetPosition;
 
-      // Calculate the actual position after modulo
-      const moduloPosition = currentPosition % (rouletteItems.length * itemWidth * 2);
-      setPosition(moduloPosition);
-
-      // Check if an item is in the center
-      checkItemInCenter(moduloPosition);
-      lastPositionRef.current = moduloPosition;
+      // Apply modulo to ensure the position loops back around
+      setPosition(currentPosition % (rouletteItems.length * itemWidth * 2));
 
       if (progress < 1) {
-        animationFrameRef.current = requestAnimationFrame(animate);
+        requestAnimationFrame(animate);
       } else {
+        // Spinning complete
         setWinner(randomIndex);
-        setSelectorVisible(true); // Keep selector visible for winner
         setTimeout(() => {
           setSpinning(false);
+          setSelectorVisible(false);
         }, 500);
       }
     };
 
-    animationFrameRef.current = requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
   };
-
-  // Cleanup animation frame on unmount
-  useEffect(() => {
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
 
   return (
     <div className="roulette-container">
       <div className="position-relative mb-4" style={{ width: "100%" }}>
-        {/* Card selector with visibility class */}
-        <div className={`card-selector ${selectorVisible ? 'visible' : ''}`}></div>
+        {/* Card selector in the center - only visible during spinning when items pass through */}
+        <div className={`card-selector ${selectorVisible ? 'visible' : 'hidden'}`}></div>
 
         {/* Roulette container */}
         <div ref={containerRef} className="roulette-viewport">
