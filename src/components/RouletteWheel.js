@@ -11,8 +11,8 @@ const prizeImages = {
   ticket: 'https://img.icons8.com/color/96/000000/ticket.png',
   gift: 'https://img.icons8.com/color/96/000000/gift.png',
   coin: 'https://img.icons8.com/color/96/000000/gold-bars.png',
-  jersey: 'https://img.icons8.com/fluency/96/jersey.png',
-  shoes: 'https://img.icons8.com/fluency/96/sneakers.png'
+  jersey: 'https://img.icons8.com/color/96/000000/t-shirt.png',
+  shoes: 'https://img.icons8.com/color/96/000000/baseball-cap.png'
 };
 
 const defaultPrizes = [
