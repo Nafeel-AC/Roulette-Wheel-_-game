@@ -41,7 +41,7 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
   const itemWidth = 140; // Width of each item + margin
   const [selectorPosition, setSelectorPosition] = useState(0);
   const itemPadding = 10; // Padding between items
-  const itemMargin = 10; // Margin between items
+  const itemMargin = 20; // Increased margin between items for bold spacing
 
   // Map items to include images and special status
   const rouletteItems = items.map((item) => ({
@@ -140,13 +140,13 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
     const centerPosition = containerWidth / 2;
     
     // Store the current position before spinning
-    const startingPosition = position % (rouletteItems.length * itemWidth);
+    const startingPosition = position % (rouletteItems.length * (itemWidth + itemMargin));
     
     // Random spin duration between 3 and 6 seconds
     const duration = Math.floor(Math.random() * 3000) + 3000;
   
     // Distance to scroll (simulate multiple full passes)
-    const totalDistance = rouletteItems.length * itemWidth * (2 + Math.random() * 2);
+    const totalDistance = rouletteItems.length * (itemWidth + itemMargin) * (2 + Math.random() * 2);
   
     let startTime = null;
     
@@ -168,14 +168,19 @@ const RouletteWheel = ({ items = defaultPrizes }) => {
         // Animation ended — determine nearest item to center
         setTimeout(() => {
           const finalPosition = startingPosition + totalDistance;
-          const offset = finalPosition + centerPosition - itemWidth / 2;
-          const centeredIndex = Math.round(offset / itemWidth);
+          const offset = finalPosition + centerPosition - (itemWidth + itemMargin) / 2;
+          const centeredIndex = Math.round(offset / (itemWidth + itemMargin));
           const actualIndex = centeredIndex % rouletteItems.length;
         
           setWinner((actualIndex + rouletteItems.length) % rouletteItems.length);
           setSpinning(false);
-          // Keep the selector visible for a moment to highlight the winning item
-          setTimeout(() => setSelectorVisible(false), 1000);
+          // Recalculate container dimensions
+          const containerRect = containerRef.current.getBoundingClientRect();
+          // Center the winning item
+          const winningItemCenter = (actualIndex * (itemWidth + itemMargin)) + ((itemWidth + itemMargin) / 2);
+          setSelectorPosition(winningItemCenter - containerRect.left);
+          // Keep the selector visible on the winning item for a moment
+          setTimeout(() => setSelectorVisible(false), 1500);
         }, 100);
       }
     };
