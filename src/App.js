@@ -1,23 +1,16 @@
-import logo from './logo.svg';
+import React from 'react';
+import RouletteWheel from './components/RouletteWheel';
 import './App.css';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="container-fluid p-4 d-flex flex-column align-items-center justify-content-center" style={{ backgroundColor: "#1a1a1a", minHeight: "100vh" }}>
+      <div className="mb-4">
+        <h1 className="text-white">Prize Wheel</h1>
+      </div>
+      <div style={{ width: "100%", maxWidth: "800px" }}>
+        <RouletteWheel />
+      </div>
     </div>
   );
 }
